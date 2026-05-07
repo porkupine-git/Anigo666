@@ -592,11 +592,19 @@ def proxy_embed():
             </script>
             """
             
-            base_url = url.rsplit('/', 1)[0] + '/'
+            # Rewrite relative URLs to absolute URLs of the provider
+            # This is more reliable than <base> for some scripts
+            domain_match = re.match(r'(https?://[^/]+)', url)
+            if domain_match:
+                domain = domain_match.group(1)
+                content = content.replace('src="/', f'src="{domain}/')
+                content = content.replace('href="/', f'href="{domain}/')
+                content = content.replace('action="/', f'action="{domain}/')
+            
             if '<head>' in content:
-                content = content.replace('<head>', f'<head>{neutralizer}<base href="{base_url}">')
+                content = content.replace('<head>', f'<head>{neutralizer}')
             else:
-                content = f'{neutralizer}<base href="{base_url}">' + content
+                content = f'{neutralizer}' + content
                 
             response = app.make_response(content)
             response.headers["Content-Type"] = "text/html"
