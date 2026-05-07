@@ -542,6 +542,38 @@ def api_home():
     cache_mgr.set(cache_key, res, ttl_hours=HOME_CACHE_TTL_HOURS)
     return jsonify({"success": True, "data": res})
 
+@app.route("/api/proxy", methods=["GET"])
+def proxy_embed():
+    target_url = request.args.get("url")
+    if not target_url:
+        return "Missing URL", 400
+    
+    headers = {
+        "User-Agent": DEFAULT_UA,
+        "Referer": "https://anigo.to/"
+    }
+    
+    try:
+        # Use simple requests or cf_session
+        r = cf_session.get(target_url, headers=headers, timeout=10)
+        content = r.text
+        
+        # Inject <base> tag so relative assets (CSS/JS) work
+        base_url = target_url.rsplit('/', 1)[0] + '/'
+        if '<head>' in content:
+            content = content.replace('<head>', f'<head><base href="{base_url}">')
+        else:
+            content = f'<base href="{base_url}">' + content
+            
+        response = app.make_response(content)
+        response.headers["Content-Type"] = "text/html"
+        # Strip anti-iframe headers
+        response.headers.pop("X-Frame-Options", None)
+        response.headers.pop("Content-Security-Policy", None)
+        return response
+    except Exception as e:
+        return f"Proxy Error: {str(e)}", 500
+
 
 if __name__ == "__main__":
     logger.info("Starting Anigo Bypass API on Port 5002...")

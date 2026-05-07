@@ -576,7 +576,8 @@ async function playServer(link, epNumber, isAuto = false) {
                 btn.classList.add('active');
             }
             
-            document.getElementById('video-player').innerHTML = `<iframe src="${streamData.provider}" allowfullscreen referrerpolicy="no-referrer" style="width:100%; height:100%; border:none; border-radius:12px;"></iframe>`;
+            const proxyUrl = `${API_BASE}/proxy?url=${encodeURIComponent(streamData.provider)}`;
+            document.getElementById('video-player').innerHTML = `<iframe src="${proxyUrl}" allowfullscreen style="width:100%; height:100%; border:none; border-radius:12px;"></iframe>`;
             playerSubtitle.innerText = `Episode ${epNumber} - Embedded Player (${link.display_title})`;
             return true;
         }
