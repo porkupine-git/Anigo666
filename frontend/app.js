@@ -559,7 +559,6 @@ async function playServer(link, epNumber, isAuto = false) {
         document.getElementById('video-player').innerHTML = '<div class="loader"></div>';
     }
 
-    // UI Update
     document.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
     const btn = document.getElementById(`server-btn-${link.id}`);
     if (btn) btn.classList.add('active');
@@ -570,19 +569,58 @@ async function playServer(link, epNumber, isAuto = false) {
         const streamRes = await fetch(`${API_BASE}/source/${link.id}`);
         const streamData = await streamRes.json();
 
-        if (streamData.success && streamData.provider) {
-            if (btn) {
-                btn.classList.remove('dead');
-                btn.classList.add('active');
-            }
+        if (streamData.success) {
+            // Check if we have direct m3u8 sources for custom player
+            const sources = streamData.stream_data && streamData.stream_data.sources;
             
-            const proxyUrl = `${API_BASE}/proxy?url=${encodeURIComponent(streamData.provider)}`;
-            document.getElementById('video-player').innerHTML = `<iframe src="${proxyUrl}" allowfullscreen style="width:100%; height:100%; border:none; border-radius:12px;"></iframe>`;
-            playerSubtitle.innerText = `Episode ${epNumber} - Embedded Player (${link.display_title})`;
-            return true;
+            if (sources && Array.isArray(sources) && sources.length > 0) {
+                const mainSource = sources[0].file || sources[0].url;
+                
+                if (mainSource && mainSource.includes('.m3u8')) {
+                    console.log("Using Custom Player for:", mainSource);
+                    
+                    document.getElementById('video-player').innerHTML = '<div id="artplayer-container" style="width:100%; height:100%; border-radius:12px; overflow:hidden;"></div>';
+                    
+                    const art = new Artplayer({
+                        container: '#artplayer-container',
+                        url: mainSource,
+                        type: 'm3u8',
+                        customType: {
+                            m3u8: function(video, url) {
+                                if (Hls.isSupported()) {
+                                    const hls = new Hls();
+                                    hls.loadSource(url);
+                                    hls.attachMedia(video);
+                                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                                    video.src = url;
+                                }
+                            },
+                        },
+                        autoplay: true,
+                        autoSize: true,
+                        fullscreen: true,
+                        fullscreenWeb: true,
+                        setting: true,
+                        playbackRate: true,
+                        aspectRatio: true,
+                        pip: true,
+                        autoPlayback: true,
+                    });
+                    
+                    playerSubtitle.innerText = `Episode ${epNumber} - Premium Player (${link.display_title})`;
+                    return true;
+                }
+            }
+
+            // Fallback to Iframe Proxy if direct sources not available or failed
+            if (streamData.provider) {
+                const proxyUrl = `${API_BASE}/proxy?url=${encodeURIComponent(streamData.provider)}`;
+                document.getElementById('video-player').innerHTML = `<iframe src="${proxyUrl}" allowfullscreen style="width:100%; height:100%; border:none; border-radius:12px;"></iframe>`;
+                playerSubtitle.innerText = `Episode ${epNumber} - Embedded Player (${link.display_title})`;
+                return true;
+            }
         }
 
-        // If it reaches here, it means 404 or dead link
         if (btn) {
             btn.classList.remove('active');
             btn.classList.add('dead');
