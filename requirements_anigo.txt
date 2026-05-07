@@ -1,4 +1,0 @@
-Flask==3.0.0
-Flask-Cors==4.0.0
-beautifulsoup4==4.12.2
-curl_cffi==0.5.10
